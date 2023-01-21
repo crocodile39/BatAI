@@ -1,0 +1,127 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class BatMovement : MonoBehaviour
+{
+    public float speed;
+    public bool wander;
+    private bool moveRight = true;
+    public float distance;
+    public float detectRadius;
+    public LayerMask playerLayer;
+    private Vector2 startPosition;
+    private Rigidbody2D rb;
+    private SpriteRenderer sr;
+    public GameObject player;
+    public Animator anim;
+    public bool isAttacking = false;
+    public Animator playeranim;
+    public GameObject Blood;
+    public GameObject BloodSpot;
+
+
+    void Start()
+    {
+        startPosition = transform.position;
+        rb = GetComponent<Rigidbody2D>();
+        sr = GetComponent<SpriteRenderer>();
+        player = GameObject.Find("Character");
+
+    }
+    void Update()
+    {
+        if (wander)
+        {
+            if (moveRight)
+            {
+                rb.velocity = new Vector2(speed, rb.velocity.y);
+                sr.flipX = true;
+                if (transform.position.x - startPosition.x >= distance)
+                {
+                    moveRight = false;
+                }
+            }
+            else
+            {
+                rb.velocity = new Vector2(-speed, rb.velocity.y);
+                sr.flipX = false;
+                if (startPosition.x - transform.position.x >= distance)
+                {
+                    moveRight = true;
+                }
+            }
+        }
+        else
+        {
+            if (player != null)
+            {
+                Vector2 direction = (player.transform.position - transform.position).normalized;
+                rb.velocity = direction * speed;
+                if (direction.x > 0)
+                {
+                    sr.flipX = true;
+                }
+                else
+                {
+                    sr.flipX = false;
+                }
+            }
+        }
+    }
+    private void FixedUpdate()
+    {
+        Collider2D playerDetected = Physics2D.OverlapCircle(transform.position, detectRadius, playerLayer);
+        if (playerDetected != null)
+        {
+            player = playerDetected.gameObject;
+            wander = false;
+        }
+    }
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            isAttacking = true;
+            anim.SetBool("isAttacking",true);
+            StartCoroutine(DeductHealth());
+
+        }
+
+        if (collision.gameObject.CompareTag("spell"))
+        {
+            Destroy(gameObject, 1f);
+            anim.SetTrigger("death");
+            wander = false;
+            isAttacking = false;
+            rb.velocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.gravityScale = 20f;
+
+        }
+    }
+
+    IEnumerator DeductHealth()
+    {
+        while (isAttacking)
+        {
+            health.Health -= 1;
+            playeranim.SetTrigger("Hit");
+            GameObject blood = Instantiate(Blood, BloodSpot.transform.position, Quaternion.identity);
+
+            yield return new WaitForSeconds(.35f);
+            
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            isAttacking = false;
+            anim.SetBool("isAttacking",false);
+        }
+    }
+
+
+}
